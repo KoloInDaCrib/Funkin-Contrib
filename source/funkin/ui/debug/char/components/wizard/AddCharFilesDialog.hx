@@ -39,7 +39,9 @@ class AddCharFilesDialog extends DefaultWizardDialog
     switch (params.renderType)
     {
       case "sparrow" | "multisparrow":
-        addAssetsBox.addComponent(new UploadAssetsBox("Put the path to the Spritesheet Image here.", FileUtil.FILE_EXTENSION_INFO_PNG));
+        if (params.renderType == "multisparrow") recursiveAssetsBox();
+        else
+          addAssetsBox.addComponent(new UploadAssetsBox("Put the path to the Spritesheet Image here.", FileUtil.FILE_EXTENSION_INFO_PNG));
 
       case "packer":
         addAssetsBox.addComponent(new UploadAssetsBox("Put the path to the Spritesheet Image here.", FileUtil.FILE_EXTENSION_INFO_PNG));
@@ -57,8 +59,12 @@ class AddCharFilesDialog extends DefaultWizardDialog
     if (addAssetsBox.disabled) return true;
 
     var uploadBoxes:Array<UploadAssetsBox> = [];
-    for (box in addAssetsBox.childComponents)
+    for (i => box in addAssetsBox.childComponents)
     {
+      if (stupidFuckingRenderCheck == "multisparrow" && i == addAssetsBox.childComponents.length - 1)
+      {
+        continue;
+      }
       if (Std.isOfType(box, UploadAssetsBox)) uploadBoxes.push(cast box);
     }
 
@@ -77,31 +83,44 @@ class AddCharFilesDialog extends DefaultWizardDialog
     switch (params.renderType)
     {
       case "sparrow" | "multisparrow":
-        var imgPath = uploadBoxes[0].daField.text;
-        var xmlPath = uploadBoxes[0].daField.text.replace(".png", ".xml");
-
-        // checking if we even have the correct file types in the correct places
-        if (Path.extension(imgPath) != "png" || Path.extension(xmlPath) != "xml") return false;
-
-        // testing if we could actually use these
-        var imgBytes = CharCreatorUtil.gimmeTheBytes(imgPath);
-        var xmlBytes = CharCreatorUtil.gimmeTheBytes(xmlPath);
-
-        var tempSprite = new FlxSprite();
-        try
+        var files = [];
+        for (uploadBox in uploadBoxes)
         {
-          var bitmap = BitmapData.fromBytes(imgBytes);
-          tempSprite.frames = FlxAtlasFrames.fromSparrow(bitmap, xmlBytes.toString());
-        }
-        catch (e)
-        {
-          tempSprite.destroy();
-          return false;
-        }
+          var imgPath = uploadBox.daField.text;
+          var xmlPath = uploadBox.daField.text.replace(".png", ".xml");
 
-        tempSprite.destroy(); // fuck this guy i hate him
-        params.files = [
-          {name: imgPath, bytes: imgBytes}, {name: xmlPath, bytes: xmlBytes}];
+          // checking if we even have the correct file types in the correct places
+          if (Path.extension(imgPath) != "png" || Path.extension(xmlPath) != "xml") return false;
+
+          // testing if we could actually use these
+          var imgBytes = CharCreatorUtil.gimmeTheBytes(imgPath);
+          var xmlBytes = CharCreatorUtil.gimmeTheBytes(xmlPath);
+
+          var tempSprite = new FlxSprite();
+          try
+          {
+            var bitmap = BitmapData.fromBytes(imgBytes);
+            tempSprite.frames = FlxAtlasFrames.fromSparrow(bitmap, xmlBytes.toString());
+          }
+          catch (e)
+          {
+            tempSprite.destroy();
+            return false;
+          }
+
+          tempSprite.destroy(); // fuck this guy i hate him
+          files = files.concat([
+            {
+              name: imgPath,
+              bytes: imgBytes
+            },
+            {
+              name: xmlPath,
+              bytes: xmlBytes
+            }
+          ]);
+        }
+        params.files = files;
 
         return true;
 
@@ -185,6 +204,16 @@ class AddCharFilesDialog extends DefaultWizardDialog
     }
 
     return false;
+  }
+
+  function recursiveAssetsBox():Void
+  {
+    var uploadAssetsBox:UploadAssetsBox = new UploadAssetsBox("Put the path to the Spritesheet Image here.", FileUtil.FILE_EXTENSION_INFO_PNG);
+    uploadAssetsBox.daField.onChange = (_) -> {
+      uploadAssetsBox.daField.onChange = null;
+      recursiveAssetsBox();
+    };
+    addAssetsBox.addComponent(uploadAssetsBox);
   }
 }
 
