@@ -49,11 +49,19 @@ class CharCreatorCharacter extends Bopper
     switch (generatedParams.renderType)
     {
       case "sparrow" | "multisparrow":
-        if (generatedParams.files.length != 2) return; // img and data
+        if (generatedParams.files.length < 2) return; // img and data
 
-        var img = BitmapData.fromBytes(generatedParams.files[0].bytes);
-        var data = generatedParams.files[1].bytes.toString();
-        this.frames = FlxAtlasFrames.fromSparrow(img, data);
+        var combinedFrames = null;
+        for (i in 0...Math.floor(generatedParams.files.length / 2))
+        {
+          var img = BitmapData.fromBytes(generatedParams.files[i * 2].bytes);
+          var data = generatedParams.files[i * 2 + 1].bytes.toString();
+          var sparrow = FlxAtlasFrames.fromSparrow(img, data);
+          if (combinedFrames == null) combinedFrames = sparrow;
+          else
+            combinedFrames.addAtlas(sparrow);
+        }
+        this.frames = combinedFrames;
 
       case "packer":
         if (generatedParams.files.length != 2) return; // img and data
@@ -113,25 +121,10 @@ class CharCreatorCharacter extends Bopper
     }
   }
 
-  var multiSparrowFrames:Map<String, FlxAtlasFrames> = [];
-
   public function addAnimation(name:String, prefix:String, offsets:Array<Float>, indices:Array<Int>, animPath:String = "", frameRate:Int = 24,
       looped:Bool = false, flipX:Bool = false, flipY:Bool = false)
   {
     if (getAnimationData(name) != null) return true; // i mean i guess???
-
-    if (renderType == "multisparrow" && !multiSparrowFrames.exists(animPath))
-    {
-      var daFrames:FlxAtlasFrames = Paths.getSparrowAtlas(animPath);
-      if (daFrames == null) return false;
-
-      multiSparrowFrames.set(animPath, daFrames);
-
-      for (frame in daFrames.frames)
-      {
-        this.frames.pushFrame(frame);
-      }
-    }
 
     if (renderType != "atlas")
     {

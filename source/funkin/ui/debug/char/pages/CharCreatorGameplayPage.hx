@@ -156,6 +156,7 @@ class CharCreatorGameplayPage extends CharCreatorDefaultPage
       var id = drop.selectedIndex + 1;
       if (id >= drop.dataSource.size) id = 0;
       drop.selectedIndex = id;
+      currentCharacter.playAnimation(currentCharacter.animations[drop.selectedIndex].name);
     }
 
     labelAnimName.onRightClick = function(_) {
@@ -165,6 +166,7 @@ class CharCreatorGameplayPage extends CharCreatorDefaultPage
       var id = drop.selectedIndex - 1;
       if (id < 0) id = drop.dataSource.size - 1;
       drop.selectedIndex = id;
+      currentCharacter.playAnimation(currentCharacter.animations[drop.selectedIndex].name);
     }
 
     labelAnimOffsetX.onClick = _ -> changeCharAnimOffset(5);
@@ -203,7 +205,7 @@ class CharCreatorGameplayPage extends CharCreatorDefaultPage
 
     currentCharacter.animations[drop.selectedIndex].offsets = newOffsets;
     currentCharacter.setAnimationOffsets(currentCharacter.animations[drop.selectedIndex].name, newOffsets[0], newOffsets[1]); // todo: probs merge there two lol
-    currentCharacter.playAnimation(currentCharacter.animations[drop.selectedIndex].name, true, true);
+    currentCharacter.playAnimation(currentCharacter.animations[drop.selectedIndex].name);
 
     // GhostUtil.copyFromCharacter(ghostCharacter, currentCharacter); very costly for memory! we're just gonna update the offsets
     ghostCharacter.animations[drop.selectedIndex].offsets = newOffsets;

@@ -19,7 +19,7 @@ class AddAnimDialog extends DefaultPageDialog
     charAnimFrames.disabled = charAnimPath.disabled = charAnimFlipX.disabled = charAnimFlipY.disabled = charAnimFramerate.disabled = (char.renderType == "atlas");
     charAnimFrames.tooltip = charAnimPath.tooltip = charAnimFlipX.tooltip = charAnimFlipY.tooltip = charAnimFramerate.tooltip = (char.renderType == "atlas" ? "Unavailable for Atlas Characters." : null);
 
-    if (char.renderType != "multisparrow")
+    if (char.renderType != "atlas")
     {
       charAnimFrameList.dataSource = new ArrayDataSource();
       for (fname in char.frames.frames)
@@ -78,7 +78,7 @@ class AddAnimDialog extends DefaultPageDialog
       if (!animAdded) return;
 
       char.setAnimationOffsets(charAnimName.text, charAnimOffsetX.pos, charAnimOffsetY.pos);
-      char.playAnimation(charAnimName.text, true, true);
+      char.playAnimation(charAnimName.text);
 
       updateDropdown();
       charAnimDropdown.selectedIndex = charAnimDropdown.dataSource.size - 1;
