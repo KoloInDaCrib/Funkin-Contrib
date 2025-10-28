@@ -176,7 +176,8 @@ class AnimateAtlasCharacter extends BaseCharacter
 
     this.mainSprite = sprite;
 
-    mainSprite.ignoreExclusionPref = ["sing"];
+    var canDance:Bool = this.hasAnimation("danceLeft");
+    mainSprite.animPriorityQueue = _data.animPriorityQueue ?? ["sing*", (canDance ? "dance*" : "idle")];
 
     // This forces the atlas to recalcuate its width and height
     this.mainSprite.alpha = 0.0001;

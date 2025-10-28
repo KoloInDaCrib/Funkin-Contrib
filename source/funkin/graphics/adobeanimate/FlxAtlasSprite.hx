@@ -41,6 +41,12 @@ class FlxAtlasSprite extends FlxAnimate
    */
   public var onAnimationLoop:FlxTypedSignal<String->Void> = new FlxTypedSignal();
 
+  /**
+   * The priority queue for the animations.
+   * The lower the index an animation has, the higher the priority. Animations not in this array have the highest priority.
+   */
+  public var animPriorityQueue:Array<String> = [];
+
   var currentAnimation:String = '';
 
   var canPlayOtherAnims:Bool = true;
@@ -111,8 +117,6 @@ class FlxAtlasSprite extends FlxAnimate
 
   var looping:Bool = false;
 
-  public var ignoreExclusionPref:Array<String> = [];
-
   /**
    * Plays an animation.
    * @param id A string ID of the animation to play.
@@ -125,25 +129,7 @@ class FlxAtlasSprite extends FlxAnimate
   public function playAnimation(id:String, restart:Bool = false, ignoreOther:Bool = false, loop:Bool = false, startFrame:Int = 0):Void
   {
     // Skip if not allowed to play animations.
-    if ((!canPlayOtherAnims))
-    {
-      if (this.currentAnimation == id && restart) {}
-      else if (ignoreExclusionPref != null && ignoreExclusionPref.length > 0)
-      {
-        var detected:Bool = false;
-        for (entry in ignoreExclusionPref)
-        {
-          if (StringTools.startsWith(id, entry))
-          {
-            detected = true;
-            break;
-          }
-        }
-        if (!detected) return;
-      }
-      else
-        return;
-    }
+    if (!canPlayOtherAnims && !canPlayAnimation(id)) return;
 
     if (anim == null) return;
 
@@ -202,6 +188,31 @@ class FlxAtlasSprite extends FlxAnimate
       // Resume animation if it's paused.
       anim.resume();
     }
+  }
+
+  /**
+   * Go over the animation priority queue and see if the requested animation can be played.
+   * @param name The requested animation to play.
+   */
+  function canPlayAnimation(name:String)
+  {
+    var requestedPriority:Int = -1;
+    var currentPriority:Int = -1;
+
+    for (i in 0...animPriorityQueue.length)
+    {
+      // Format each priority queue member to fit the ereg format.
+      var queueEntry:String = "^" + animPriorityQueue[i];
+      var regFormat:String = queueEntry.replace("*", ".+");
+
+      if (regFormat.endsWith(".+")) queueEntry = queueEntry.substring(0, queueEntry.length - 1) + "$.+";
+
+      if (new EReg(regFormat, "g").match(name) && requestedPriority == -1) requestedPriority = i;
+      if (new EReg(regFormat, "g").match(getCurrentAnimation()) && currentPriority == -1) currentPriority = i;
+    }
+
+    // An animation can be played if the requestedPriority is smaller or equal to the currentPriority.
+    return requestedPriority <= currentPriority;
   }
 
   override public function update(elapsed:Float):Void

@@ -160,8 +160,6 @@ class BaseCharacter extends Bopper
 
     this.characterId = id;
 
-    ignoreExclusionPref = ["sing"];
-
     _data = CharacterDataParser.fetchCharacterData(this.characterId);
     if (_data == null)
     {
@@ -179,6 +177,9 @@ class BaseCharacter extends Bopper
       this.singTimeSteps = _data.singTime;
       this.globalOffsets = _data.offsets;
       this.flipX = _data.flipX;
+
+      var canDance:Bool = this.hasAnimation("danceLeft");
+      this.animPriorityQueue = _data.animPriorityQueue ?? ["sing*", (canDance ? "dance*" : "idle")];
     }
 
     shouldBop = false;

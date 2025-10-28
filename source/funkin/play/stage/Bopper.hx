@@ -44,6 +44,12 @@ class Bopper extends StageProp implements IPlayStateScriptedClass
   public var idleSuffix(default, set):String = '';
 
   /**
+   * The priority queue for the animations.
+   * The lower the index an animation has, the higher the priority. Animations not in this array have the highest priority.
+   */
+  public var animPriorityQueue:Array<String> = [];
+
+  /**
    * If this bopper is rendered with pixel art, disable anti-aliasing.
    * @default `false`
    */
@@ -118,7 +124,6 @@ class Bopper extends StageProp implements IPlayStateScriptedClass
    */
   function onAnimationFinished(name:String)
   {
-    // TODO: Can we make a system of like, animation priority or something?
     if (!canPlayOtherAnims)
     {
       canPlayOtherAnims = true;
@@ -253,8 +258,6 @@ class Bopper extends StageProp implements IPlayStateScriptedClass
 
   public var canPlayOtherAnims:Bool = true;
 
-  public var ignoreExclusionPref:Array<String> = [];
-
   /**
    * @param name The name of the animation to play.
    * @param restart Whether to restart the animation if it is already playing.
@@ -263,26 +266,7 @@ class Bopper extends StageProp implements IPlayStateScriptedClass
    */
   public function playAnimation(name:String, restart:Bool = false, ignoreOther:Bool = false, reversed:Bool = false):Void
   {
-    if ((!canPlayOtherAnims))
-    {
-      var id = name;
-      if (getCurrentAnimation() == id && restart) {}
-      else if (ignoreExclusionPref != null && ignoreExclusionPref.length > 0)
-      {
-        var detected:Bool = false;
-        for (entry in ignoreExclusionPref)
-        {
-          if (StringTools.startsWith(id, entry))
-          {
-            detected = true;
-            break;
-          }
-        }
-        if (!detected) return;
-      }
-      else
-        return;
-    }
+    if (!canPlayOtherAnims && !canPlayAnimation(name)) return;
 
     var correctName = correctAnimationName(name);
     if (correctName == null) return;
@@ -295,6 +279,31 @@ class Bopper extends StageProp implements IPlayStateScriptedClass
     }
 
     applyAnimationOffsets(correctName);
+  }
+
+  /**
+   * Go over the animation priority queue and see if the requested animation can be played.
+   * @param name The requested animation to play.
+   */
+  function canPlayAnimation(name:String)
+  {
+    var requestedPriority:Int = -1;
+    var currentPriority:Int = -1;
+
+    for (i in 0...animPriorityQueue.length)
+    {
+      // Format each priority queue member to fit the ereg format.
+      var queueEntry:String = "^" + animPriorityQueue[i];
+      var regFormat:String = queueEntry.replace("*", ".+");
+
+      if (regFormat.endsWith(".+")) queueEntry = queueEntry.substring(0, queueEntry.length - 1) + "$.+";
+
+      if (new EReg(regFormat, "g").match(name) && requestedPriority == -1) requestedPriority = i;
+      if (new EReg(regFormat, "g").match(getCurrentAnimation()) && currentPriority == -1) currentPriority = i;
+    }
+
+    // An animation can be played if the requestedPriority is smaller or equal to the currentPriority.
+    return requestedPriority <= currentPriority;
   }
 
   var forceAnimationTimer:FlxTimer = new FlxTimer();

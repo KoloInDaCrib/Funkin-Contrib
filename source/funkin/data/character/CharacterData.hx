@@ -523,6 +523,12 @@ class CharacterDataParser
       input.startingAnimation = DEFAULT_STARTINGANIM;
     }
 
+    if (input.animPriorityQueue == null)
+    {
+      var canDance:Bool = [for (a in input.animations) a.name].contains("danceLeft");
+      input.animPriorityQueue = ["sing*", (canDance ? "dance*" : "idle")];
+    }
+
     if (input.scale == null)
     {
       input.scale = DEFAULT_SCALE;
@@ -559,7 +565,7 @@ class CharacterDataParser
       input.flipX = DEFAULT_FLIPX;
     }
 
-    if (input.animations.length == 0 && input.startingAnimation != null)
+    if (input.animations.length == 0 && (input.startingAnimation != null || input.animPriorityQueue != null))
     {
       return null;
     }
@@ -726,6 +732,12 @@ typedef CharacterData =
    * @default idle
    */
   var startingAnimation:Null<String>;
+
+  /**
+   * If animations are used, place them here to have some sort of priority queue.
+   * For example a queue ["sing*", "idle"] would have all animations starting with "sing" on a higher priority than idling.
+   */
+  var animPriorityQueue:Null<Array<String>>;
 
   /**
    * Whether or not the whole ass sprite is flipped by default.
