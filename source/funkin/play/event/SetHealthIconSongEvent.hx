@@ -1,7 +1,7 @@
 package funkin.play.event;
 
 import funkin.data.event.SongEventSchema;
-import funkin.play.character.CharacterData.HealthIconData;
+import funkin.data.character.CharacterData.HealthIconData;
 import funkin.data.song.SongData;
 import funkin.data.song.SongData.SongEventData;
 
@@ -61,7 +61,7 @@ class SetHealthIconSongEvent extends SongEvent
         trace('Applying Opponent health icon via song event: ${healthIconData.id}');
         PlayState.instance.iconP2.configure(healthIconData);
       default:
-        trace('[WARN] Unknown character index: ' + data.value.char);
+        trace(' WARNING '.bold().bg_yellow() + ' Unknown character index: ' + data.value.char);
     }
   }
 
@@ -90,6 +90,7 @@ class SetHealthIconSongEvent extends SongEvent
         name: 'scale',
         title: 'Scale',
         defaultValue: 1.0,
+        min: 0,
         type: SongEventFieldType.FLOAT,
       },
       {

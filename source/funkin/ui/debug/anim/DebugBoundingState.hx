@@ -1,5 +1,6 @@
 package funkin.ui.debug.anim;
 
+#if FEATURE_ANIMATION_EDITOR
 import flixel.addons.display.FlxBackdrop;
 import flixel.addons.display.FlxGridOverlay;
 import flixel.FlxCamera;
@@ -12,8 +13,8 @@ import flixel.text.FlxText;
 import flixel.util.FlxColor;
 import funkin.input.Cursor;
 import funkin.play.character.BaseCharacter;
-import funkin.play.character.CharacterData;
-import funkin.play.character.CharacterData.CharacterDataParser;
+import funkin.data.character.CharacterData;
+import funkin.data.character.CharacterData.CharacterDataParser;
 import funkin.ui.mainmenu.MainMenuState;
 import funkin.util.MouseUtil;
 import funkin.util.SerializerUtil;
@@ -68,11 +69,11 @@ class DebugBoundingState extends FlxState
   function get_haxeUIFocused():Bool
   {
     // get the screen position, according to the HUD camera, temp default to FlxG.camera juuust in case?
-    var hudMousePos:FlxPoint = FlxG.mouse.getScreenPosition(hudCam ?? FlxG.camera);
+    var hudMousePos:FlxPoint = FlxG.mouse.getViewPosition(hudCam ?? FlxG.camera);
     return Screen.instance.hasSolidComponentUnderPoint(hudMousePos.x, hudMousePos.y);
   }
 
-  override function create()
+  override function create():Void
   {
     Paths.setCurrentLevel('week1');
 
@@ -92,7 +93,7 @@ class DebugBoundingState extends FlxState
     var viewDropdown:DropDown = offsetEditorDialog.findComponent("swapper", DropDown);
     viewDropdown.onChange = function(e:UIEvent) {
       trace(e.type);
-      curView = cast e.data.curView;
+      curView = cast e?.data?.curView;
       trace(e.data);
       // trace(e.data);
     };
@@ -100,6 +101,7 @@ class DebugBoundingState extends FlxState
     offsetAnimationDropdown = offsetEditorDialog.findComponent("animationDropdown", DropDown);
 
     offsetEditorDialog.cameras = [hudCam];
+    offsetEditorDialog.closable = false;
 
     add(offsetEditorDialog);
     offsetEditorDialog.showDialog(false);
@@ -160,14 +162,31 @@ class DebugBoundingState extends FlxState
     {
       var lineStyle:LineStyle = {color: FlxColor.RED, thickness: 2};
 
-      var uvW:Float = (i.uv.width * i.parent.width) - (i.uv.x * i.parent.width);
-      var uvH:Float = (i.uv.height * i.parent.height) - (i.uv.y * i.parent.height);
+      var uvW:Float = (i.uv.right * i.parent.width) - (i.uv.left * i.parent.width);
+      var uvH:Float = (i.uv.bottom * i.parent.height) - (i.uv.top * i.parent.height);
 
-      // trace(Std.int(i.uv.width * i.parent.width));
-      swagOutlines.drawRect(i.uv.x * i.parent.width, i.uv.y * i.parent.height, uvW, uvH, FlxColor.TRANSPARENT, lineStyle);
+      // trace(Std.int(i.uv.right * i.parent.width));
+      swagOutlines.drawRect(i.uv.left * i.parent.width, i.uv.top * i.parent.height, uvW, uvH, FlxColor.TRANSPARENT, lineStyle);
       // swagGraphic.setPosition(, );
       // trace(uvH);
     }
+  }
+
+  function updateOnionSkin():Void
+  {
+    if (swagChar == null) return;
+    if (swagChar.hasAnimation("idle")) swagChar.playAnimation("idle", true);
+
+    onionSkinChar.loadGraphicFromSprite(swagChar);
+    onionSkinChar.frame = swagChar.frame;
+    onionSkinChar.alpha = 0.6;
+    onionSkinChar.flipX = swagChar.flipX;
+    onionSkinChar.scale.set(swagChar.scale.x, swagChar.scale.y);
+    onionSkinChar.updateHitbox();
+    onionSkinChar.offset.x = swagChar.offset.x + (swagChar.animOffsets[0] - swagChar.globalOffsets[0]) * swagChar.scale.x;
+    onionSkinChar.offset.y = swagChar.offset.y + (swagChar.animOffsets[1] - swagChar.globalOffsets[1]) * swagChar.scale.y;
+
+    swagChar.playAnimation(currentAnimationName, true); // reset animation to the one it should be
   }
 
   function initOffsetView():Void
@@ -223,7 +242,7 @@ class DebugBoundingState extends FlxState
       {
         swagChar.animOffsets = [(FlxG.mouse.x - mouseOffset.x) * -1, (FlxG.mouse.y - mouseOffset.y) * -1];
 
-        swagChar.animationOffsets.set(offsetAnimationDropdown.value.id, swagChar.animOffsets);
+        swagChar.animationOffsets.set(swagChar.getCurrentAnimation(), swagChar.animOffsets);
 
         txtOffsetShit.text = 'Offset: ' + swagChar.animOffsets;
         txtOffsetShit.y = FlxG.height - 20 - txtOffsetShit.height;
@@ -304,12 +323,12 @@ class DebugBoundingState extends FlxState
         spriteSheetView.visible = true;
         offsetView.visible = false;
         offsetView.active = false;
-        offsetAnimationDropdown.visible = false;
+        offsetAnimationDropdown.hide();
       case ANIMATIONS:
         spriteSheetView.visible = false;
         offsetView.visible = true;
         offsetView.active = true;
-        offsetAnimationDropdown.visible = true;
+        offsetAnimationDropdown.show();
         offsetControls();
         mouseOffsetMovement();
     }
@@ -329,8 +348,26 @@ class DebugBoundingState extends FlxState
     super.update(elapsed);
   }
 
+  override function destroy()
+  {
+    super.destroy();
+
+    // Hide the mouse cursor on other states.
+    Cursor.hide();
+  }
+
   function offsetControls():Void
   {
+    // CTRL + S = Save Character Data
+    // CTRL + SHIFT + S = Save Offsets
+    // "WINDOWS" key code is the same keycode as COMMAND on mac
+    if ((FlxG.keys.pressed.CONTROL || FlxG.keys.pressed.WINDOWS) && FlxG.keys.justPressed.S)
+    {
+      var outputString = FlxG.keys.pressed.SHIFT ? buildOutputStringOld() : buildOutputStringNew();
+      saveOffsets(outputString, FlxG.keys.pressed.SHIFT ? swagChar.characterId + "Offsets.txt" : swagChar.characterId + ".json");
+      return;
+    }
+
     if (FlxG.keys.justPressed.RBRACKET || FlxG.keys.justPressed.E)
     {
       if (offsetAnimationDropdown.selectedIndex + 1 <= offsetAnimationDropdown.dataSource.size)
@@ -394,11 +431,13 @@ class DebugBoundingState extends FlxState
     if (FlxG.keys.justPressed.F)
     {
       onionSkinChar.visible = !onionSkinChar.visible;
+      if (onionSkinChar.visible) updateOnionSkin();
     }
 
     if (FlxG.keys.justPressed.G)
     {
       swagChar.flipX = !swagChar.flipX;
+      if (onionSkinChar.visible) updateOnionSkin();
     }
 
     // Plays the idle animation
@@ -438,12 +477,6 @@ class DebugBoundingState extends FlxState
       txtOffsetShit.y = FlxG.height - 20 - txtOffsetShit.height;
 
       trace(animName);
-    }
-
-    if (FlxG.keys.justPressed.ESCAPE)
-    {
-      var outputString = FlxG.keys.pressed.CONTROL ? buildOutputStringOld() : buildOutputStringNew();
-      saveOffsets(outputString, FlxG.keys.pressed.CONTROL ? swagChar.characterId + "Offsets.txt" : swagChar.characterId + ".json");
     }
   }
 
@@ -488,8 +521,8 @@ class DebugBoundingState extends FlxState
     }
 
     swagChar = CharacterDataParser.fetchCharacter(char);
-    swagChar.x = 100;
-    swagChar.y = 100;
+    swagChar.x = onionSkinChar.x = 100;
+    swagChar.y = onionSkinChar.y = 100;
     swagChar.debug = true;
     offsetView.add(swagChar);
 
@@ -544,14 +577,7 @@ class DebugBoundingState extends FlxState
 
   function playCharacterAnimation(str:String, setOnionSkin:Bool = true)
   {
-    if (setOnionSkin)
-    {
-      // clears the canvas
-      onionSkinChar.pixels.fillRect(new Rectangle(0, 0, FlxG.width * 2, FlxG.height * 2), 0x00000000);
-
-      onionSkinChar.stamp(swagChar, Std.int(swagChar.x), Std.int(swagChar.y));
-      onionSkinChar.alpha = 0.6;
-    }
+    if (setOnionSkin) updateOnionSkin();
 
     // var animName = characterAnimNames[Std.parseInt(str)];
     var animName = str;
@@ -614,3 +640,4 @@ enum abstract ANIMDEBUGVIEW(String)
   var SPRITESHEET;
   var ANIMATIONS;
 }
+#end

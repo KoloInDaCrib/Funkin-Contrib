@@ -4,10 +4,17 @@ import funkin.graphics.adobeanimate.FlxAtlasSprite;
 import funkin.modding.IScriptedClass.IBPMSyncedScriptedClass;
 import funkin.modding.events.ScriptEvent;
 
+@:nullSafety
 class CharSelectPlayer extends FlxAtlasSprite implements IBPMSyncedScriptedClass
 {
+  var initialX:Float = 0;
+  var initialY:Float = 0;
+
   public function new(x:Float, y:Float)
   {
+    initialX = x;
+    initialY = y;
+
     super(x, y, Paths.animateAtlas("charSelect/bfChill"));
 
     onAnimationComplete.add(function(animLabel:String) {
@@ -53,17 +60,13 @@ class CharSelectPlayer extends FlxAtlasSprite implements IBPMSyncedScriptedClass
   {
     switch (str)
     {
-      case "bf":
-        x = 0;
-        y = 0;
-      case "pico":
-        x = 0;
-        y = 0;
-      case "random":
+      case "bf" | 'pico' | "random":
+        x = initialX;
+        y = initialY;
     }
   }
 
-  public function switchChar(str:String)
+  public function switchChar(str:String, playSlideAnim:Bool = true)
   {
     switch str
     {
@@ -71,7 +74,8 @@ class CharSelectPlayer extends FlxAtlasSprite implements IBPMSyncedScriptedClass
         loadAtlas(Paths.animateAtlas("charSelect/" + str + "Chill"));
     }
 
-    playAnimation("slidein", true, false, false);
+    final animName:String = playSlideAnim ? "slidein" : "idle";
+    playAnimation(animName, true, false, false);
 
     updateHitbox();
 

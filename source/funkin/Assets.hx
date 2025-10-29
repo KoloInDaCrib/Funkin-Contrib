@@ -10,6 +10,11 @@ import openfl.utils.Future;
 class Assets
 {
   /**
+   * The assets cache.
+   */
+  public static var cache:openfl.utils.IAssetCache = openfl.utils.Assets.cache;
+
+  /**
    * Get the file system path for an asset
    * @param path The asset path to load from, relative to the assets folder
    * @return The path to the asset on the file system
@@ -109,9 +114,9 @@ class Assets
    * @param path The asset path to load from
    * @return The loaded Bitmap image
    */
-  public static function getBitmapData(path:String):openfl.display.BitmapData
+  public static function getBitmapData(path:String, useCache:Bool = true):openfl.display.BitmapData
   {
-    return openfl.utils.Assets.getBitmapData(path);
+    return openfl.utils.Assets.getBitmapData(path, useCache);
   }
 
   /**

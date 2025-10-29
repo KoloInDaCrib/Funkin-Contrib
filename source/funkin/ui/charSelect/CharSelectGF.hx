@@ -10,20 +10,22 @@ import funkin.modding.events.ScriptEvent;
 import funkin.vis.dsp.SpectralAnalyzer;
 import funkin.data.freeplay.player.PlayerRegistry;
 
+@:nullSafety
 class CharSelectGF extends FlxAtlasSprite implements IBPMSyncedScriptedClass
 {
   var fadeTimer:Float = 0;
   var fadingStatus:FadeStatus = OFF;
   var fadeAnimIndex:Int = 0;
 
-  var animInInfo:FramesJSFLInfo;
-  var animOutInfo:FramesJSFLInfo;
+  var animInInfo:Null<FramesJSFLInfo>;
+  var animOutInfo:Null<FramesJSFLInfo>;
 
   var intendedYPos:Float = 0;
   var intendedAlpha:Float = 0;
-  var list:Array<String> = [];
+  var list:Array<Null<String>> = [];
 
-  var analyzer:SpectralAnalyzer;
+  var analyzer:Null<SpectralAnalyzer>;
+  var analyzerLevelsCache:Array<Bar> = new Array<Bar>();
 
   var currentGFPath:Null<String>;
   var enableVisualizer:Bool = false;
@@ -34,7 +36,7 @@ class CharSelectGF extends FlxAtlasSprite implements IBPMSyncedScriptedClass
 
     list = anim.curSymbol.getFrameLabelNames();
 
-    switchGF("bf");
+    switchGF(Constants.DEFAULT_CHARACTER);
   }
 
   override public function update(elapsed:Float):Void
@@ -49,9 +51,9 @@ class CharSelectGF extends FlxAtlasSprite implements IBPMSyncedScriptedClass
         // maybe reset timers?
         resetFadeAnimParams();
       case FADE_OUT:
-        doFade(animOutInfo);
+        if (animOutInfo != null) doFade(animOutInfo);
       case FADE_IN:
-        doFade(animInInfo);
+        if (animInInfo != null) doFade(animInInfo);
       default:
     }
   }
@@ -82,18 +84,19 @@ class CharSelectGF extends FlxAtlasSprite implements IBPMSyncedScriptedClass
 
   function drawFFT()
   {
-    if (enableVisualizer)
+    if (enableVisualizer && analyzer != null)
     {
-      var levels = analyzer.getLevels();
+      analyzerLevelsCache = analyzer.getLevels(analyzerLevelsCache);
       var frame = anim.curSymbol.timeline.get("VIZ_bars").get(anim.curFrame);
+      if (frame == null) return;
       var elements = frame.getList();
       var len:Int = cast Math.min(elements.length, 7);
 
       for (i in 0...len)
       {
-        var animFrame:Int = Math.round(levels[i].value * 12);
+        var animFrame:Int = (FlxG.sound.volume == 0 || FlxG.sound.muted) ? 0 : Math.round(analyzerLevelsCache[i].value * 12);
 
-        #if desktop
+        #if sys
         // Web version scales with the Flixel volume level.
         // This line brings platform parity but looks worse.
         // animFrame = Math.round(animFrame * FlxG.sound.volume);
@@ -113,8 +116,13 @@ class CharSelectGF extends FlxAtlasSprite implements IBPMSyncedScriptedClass
    * @param animInfo Should not be confused with animInInfo!
    *                 This is merely a local var for the function!
    */
-  function doFade(animInfo:FramesJSFLInfo):Void
+  function doFade(animInfo:Null<FramesJSFLInfo>):Void
   {
+    if (animInfo == null)
+    {
+      return;
+    }
+
     fadeTimer += FlxG.elapsed;
     if (fadeTimer >= 1 / 24)
     {
@@ -135,7 +143,7 @@ class CharSelectGF extends FlxAtlasSprite implements IBPMSyncedScriptedClass
       alphaDiff /= 100; // flash exports alpha as a whole number
 
       alpha += alphaDiff;
-      alpha = FlxMath.bound(alpha, 0, 1);
+      alpha = alpha.clamp(0, 1);
       x += xDiff;
       y += yDiff;
 
@@ -161,7 +169,7 @@ class CharSelectGF extends FlxAtlasSprite implements IBPMSyncedScriptedClass
 
     var bfObj = PlayerRegistry.instance.fetchEntry(bf);
     var gfData = bfObj?.getCharSelectData()?.gf;
-    currentGFPath = gfData?.assetPath != null ? Paths.animateAtlas(gfData?.assetPath) : null;
+    if (gfData != null && gfData.assetPath != null) currentGFPath = Paths.animateAtlas(gfData.assetPath);
 
     // We don't need to update any anims if we didn't change GF
     trace('currentGFPath(${currentGFPath})');
@@ -181,6 +189,9 @@ class CharSelectGF extends FlxAtlasSprite implements IBPMSyncedScriptedClass
 
       animInInfo = FramesJSFLParser.parse(animInfoPath + '/In.txt');
       animOutInfo = FramesJSFLParser.parse(animInfoPath + '/Out.txt');
+
+      if (animInInfo == null) trace(" ERROR ".bg_red().bold() + " Failed to load data for animInInfo, is the path provided correct?");
+      if (animOutInfo == null) trace(" ERROR ".bg_red().bold() + " Failed to load data for animOutInfo, is the path provided correct?");
     }
 
     playAnimation("idle", true, false, false);
