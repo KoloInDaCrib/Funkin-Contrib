@@ -2,6 +2,7 @@ package funkin.play.character;
 
 import flixel.graphics.frames.FlxAtlasFrames;
 import flixel.graphics.frames.FlxFramesCollection;
+import flixel.graphics.FlxGraphic;
 import funkin.modding.events.ScriptEvent;
 import funkin.util.assets.FlxAnimationUtil;
 import funkin.data.character.CharacterData.CharacterRenderType;
@@ -19,6 +20,8 @@ import funkin.data.character.CharacterData.CharacterRenderType;
  */
 class MultiSparrowCharacter extends BaseCharacter
 {
+  var frameBase:Null<FlxGraphic> = null;
+
   public function new(id:String)
   {
     super(id, CharacterRenderType.MultiSparrow);
@@ -58,7 +61,7 @@ class MultiSparrowCharacter extends BaseCharacter
   {
     trace('Loading assets for Multi-Sparrow character "${characterId}"', flixel.util.FlxColor.fromString("#89CFF0"));
 
-    var assetList = [];
+    var assetList:Array<String> = [_data.assetPath];
     for (anim in _data.animations)
     {
       if (anim.assetPath != null && !assetList.contains(anim.assetPath))
@@ -67,7 +70,18 @@ class MultiSparrowCharacter extends BaseCharacter
       }
     }
 
-    var texture:FlxAtlasFrames = Paths.getSparrowAtlas(_data.assetPath);
+    // Forcefully create a new FlxAtlasFrames collection so that we don't add to the same FlxAtlasFrames instance.
+    var texture:Null<FlxAtlasFrames> = null;
+
+    if (frameBase == null)
+    {
+      frameBase = FlxGraphic.fromAssetKey(Paths.image(_data.assetPath), true, this.characterId, true);
+    }
+
+    if (frameBase != null)
+    {
+      texture = new FlxAtlasFrames(frameBase);
+    }
 
     if (texture == null)
     {

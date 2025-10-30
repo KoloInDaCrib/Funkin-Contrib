@@ -531,7 +531,16 @@ class DebugBoundingState extends FlxState
       trace('ERROR: Failed to load character ${char}!');
     }
 
-    generateOutlines(swagChar.frames.frames);
+    // For multisparrow render types, only generate the outlines for the main spritesheet.
+    if (swagChar._data.renderType == "multisparrow")
+    {
+      generateOutlines(Paths.getSparrowAtlas(swagChar._data.assetPath).frames);
+    }
+    else
+    {
+      generateOutlines(swagChar.frames.frames);
+    }
+
     bf.pixels = swagChar.pixels;
 
     clearInfo();
