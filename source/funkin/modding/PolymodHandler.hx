@@ -21,6 +21,7 @@ import funkin.util.FileUtil;
 import funkin.util.macro.ClassMacro;
 import polymod.backends.PolymodAssets.PolymodAssetType;
 import polymod.format.ParseRules.TextFileFormat;
+import polymod.hscript._internal.PolymodScriptClass;
 import polymod.Polymod;
 
 /**
@@ -387,7 +388,7 @@ class PolymodHandler
     {
       if (cls == null) continue;
       var className:String = Type.getClassName(cls);
-      if (polymod.hscript._internal.PolymodScriptClass.importOverrides.exists(className)) continue;
+      if (PolymodScriptClass.importOverrides.exists(className)) continue;
       Polymod.blacklistImport(className);
     }
 
@@ -450,6 +451,16 @@ class PolymodHandler
     Polymod.blacklistImport('funkin.external.android.CallbackUtil');
     Polymod.blacklistImport('funkin.external.android.DataFolderUtil');
     Polymod.blacklistImport('funkin.external.android.JNIUtil');
+
+    // Add import aliases for Typedefs that extend classes and abstracts like FlxSpriteGroup or FlxSignal.
+    // Doing this last so that we don't set an alias for an already blacklisted import.
+    for (name => cls in ClassMacro.listTypedefWrappers())
+    {
+      if (PolymodScriptClass.importOverrides.exists(name)) continue;
+
+      var resolvedCls:Class<Dynamic> = Type.resolveClass(cls);
+      Polymod.addImportAlias(name, resolvedCls);
+    }
   }
 
   /**

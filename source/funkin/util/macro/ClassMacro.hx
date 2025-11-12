@@ -2,6 +2,8 @@ package funkin.util.macro;
 
 import haxe.macro.Context;
 import haxe.macro.Expr;
+import haxe.macro.Type.AbstractType;
+import haxe.macro.Type.DefType;
 import haxe.macro.Type.ClassType;
 
 /**
@@ -64,6 +66,20 @@ class ClassMacro
     return macro funkin.util.macro.CompiledClassList.getTyped($v{request}, ${targetClassExpr});
   }
 
+  /**
+   * Get a list of Typedefs that redirect to classes such as `FlxSpriteGroup`, along with the classes they redirect to.
+   */
+  public static macro function listTypedefWrappers():ExprOf<Map<String, String>>
+  {
+    if (!onGenerateCallbackRegistered)
+    {
+      onGenerateCallbackRegistered = true;
+      Context.onGenerate(onGenerate);
+    }
+
+    return macro funkin.util.macro.CompiledClassList.getTypedefWrappers();
+  }
+
   #if macro
   /**
    * Callback executed after the typing phase but before the generation phase.
@@ -75,6 +91,7 @@ class ClassMacro
   {
     // Reset these, since onGenerate persists across multiple builds.
     classListsRaw = [];
+    typedefList.clear();
 
     for (request in classListsToGenerate)
     {
@@ -104,6 +121,90 @@ class ClassMacro
               }
             }
           }
+
+        case TType(t1, _params):
+          var defType:DefType = t1.get();
+          var className:String = "";
+
+          switch (defType.type)
+          {
+            case TInst(t2, _):
+              className = t2.toString();
+
+            case TAbstract(t2, params):
+              var absType:AbstractType = t2.get();
+
+              // See if the abstract has any implicit casts that we can use for the wrapper class.
+              for (to in absType.to)
+              {
+                if (to.field == null) continue;
+
+                switch (to.field.type)
+                {
+                  case TFun(args, ret):
+                    // If there are no args, assume this is the only implicit cast.
+                    if (args.length == 0)
+                    {
+                      switch (ret)
+                      {
+                        case TInst(t3, _):
+                          className = t3.toString();
+
+                        default:
+                          // Do nothing.
+                      }
+                      break;
+                    }
+
+                    switch (args[0].t)
+                    {
+                      case TInst(_, checkParams):
+                        // If the params match, use this instance.
+                        var paramsMatch:Bool = (params.length == checkParams.length);
+                        if (paramsMatch)
+                        {
+                          for (i in 0...params.length)
+                          {
+                            if (Std.string(params[i]) != Std.string(checkParams[i]))
+                            {
+                              paramsMatch = false;
+                              break;
+                            }
+                          }
+                        }
+
+                        if (!paramsMatch) continue;
+
+                        switch (ret)
+                        {
+                          case TInst(t3, _):
+                            className = t3.toString();
+
+                          default:
+                        }
+                        break;
+
+                      default:
+                        // Do nothing.
+                    }
+
+                  default:
+                    // Do nothing.
+                }
+              }
+
+              // Otherwise resort to using the impl class.
+              if (className == "") className = absType.impl?.toString() ?? "";
+
+            default:
+              // Do nothing.
+          }
+
+          if (className == "") continue; // The class is an anonymous object; skip.
+
+          var classKey:String = defType.pack.join(".") + (defType.pack.length > 0 ? "." : "") + defType.name;
+          typedefList.set(classKey, className);
+
         // Other types (things like enums)
         default:
           continue;
@@ -128,6 +229,7 @@ class ClassMacro
 
     // Reset outdated metadata.
     if (compiledClassList.meta.has('classLists')) compiledClassList.meta.remove('classLists');
+    if (compiledClassList.meta.has('typedefList')) compiledClassList.meta.remove('typedefList');
 
     var classLists:Array<Expr> = [];
     // Generate classLists.
@@ -145,8 +247,17 @@ class ClassMacro
       classLists.push(macro $a{classListEntries});
     }
 
+    // Generate typedef wrappers. They're structured like [wrapperName, wrapperClass].
+    var typedefWrappers:Array<Expr> = [];
+    for (name => cls in typedefList)
+    {
+      var entry:Array<Expr> = [macro $v{name}, macro $v{cls}];
+      typedefWrappers.push(macro $a{entry});
+    }
+
     // Insert classLists into metadata.
     compiledClassList.meta.add('classLists', classLists, Context.currentPos());
+    compiledClassList.meta.add('typedefList', typedefWrappers, Context.currentPos());
   }
 
   static function doesClassMatchRequest(classType:ClassType, request:String):Bool
@@ -197,5 +308,6 @@ class ClassMacro
 
   static var classListsRaw:Map<String, Array<String>> = [];
   static var classListsToGenerate:Array<String> = [];
+  static var typedefList:Map<String, String> = [];
   #end
 }

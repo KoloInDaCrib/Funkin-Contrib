@@ -11,6 +11,7 @@ using funkin.util.AnsiUtil;
 class CompiledClassList
 {
   static var classLists:Map<String, List<Class<Dynamic>>> = [];
+  static var typedefWrappers:Map<String, String> = [];
   static var initialized:Bool = false;
 
   /**
@@ -24,7 +25,7 @@ class CompiledClassList
     // Meta.getType returns Dynamic<Array<Dynamic>>.
     var metaData = Meta.getType(CompiledClassList);
 
-    if (metaData.classLists != null)
+    if (metaData.classLists != null && metaData.typedefList != null)
     {
       for (list in metaData.classLists)
       {
@@ -44,6 +45,14 @@ class CompiledClassList
         }
 
         classLists.set(id, classes);
+      }
+
+      for (list in metaData.typedefList)
+      {
+        var data:Array<String> = cast list;
+
+        // The first element is the wrapper name, whereas the second is the wrapper class behind it.
+        typedefWrappers.set(data[0], data[1]);
       }
     }
     else
@@ -65,6 +74,12 @@ class CompiledClassList
     // A faulty request sets the value to an empty list above so this will never be null
     @:nullSafety(Off)
     return classLists.get(request);
+  }
+
+  public static function getTypedefWrappers():Map<String, String>
+  {
+    if (!initialized) init();
+    return typedefWrappers;
   }
 
   public static inline function getTyped<T>(request:String, type:Class<T>):List<Class<T>>
