@@ -2511,6 +2511,7 @@ class ChartEditorState extends UIState // UIState derives from MusicBeatState
     showNoteKindIndicators = save.chartEditorShowNoteKinds.value;
     showSubtitles = save.chartEditorShowSubtitles.value;
     playtestStartTime = save.chartEditorPlaytestStartTime.value;
+    playtestAudioSettings = save.chartEditorPlaytestAudioSettings.value;
     currentTheme = save.chartEditorTheme.value;
     metronomeVolume = save.chartEditorMetronomeVolume.value;
     hitsoundVolumePlayer = save.chartEditorHitsoundVolumePlayer.value;
@@ -2541,6 +2542,7 @@ class ChartEditorState extends UIState // UIState derives from MusicBeatState
     save.chartEditorDownscroll.value = isViewDownscroll;
     save.chartEditorShowNoteKinds.value = showNoteKindIndicators;
     save.chartEditorPlaytestStartTime.value = playtestStartTime;
+    save.chartEditorPlaytestAudioSettings.value = playtestAudioSettings;
     save.chartEditorTheme.value = currentTheme;
     save.chartEditorMetronomeVolume.value = metronomeVolume;
     save.chartEditorHitsoundVolumePlayer.value = hitsoundVolumePlayer;

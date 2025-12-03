@@ -282,6 +282,9 @@ class Save implements ConsoleClass
   @:saveProperty(data.optionsChartEditor.playtestStartTime, false)
   public var chartEditorPlaytestStartTime:SaveProperty<Bool>;
 
+  @:saveProperty(data.optionsChartEditor.playtestAudioSettings, false)
+  public var chartEditorPlaytestAudioSettings:SaveProperty<Bool>;
+
   @:saveProperty(data.optionsChartEditor.theme, ChartEditorTheme.Light)
   public var chartEditorTheme:SaveProperty<ChartEditorTheme>;
 
