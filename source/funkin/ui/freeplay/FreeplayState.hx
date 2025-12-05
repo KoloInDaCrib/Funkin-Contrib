@@ -3038,13 +3038,16 @@ class FreeplayState extends MusicBeatSubState
           onLoad: function() {
             FlxG.sound.music.fadeIn(2, 0, previewVolume);
 
-            var fadeStart:Float = (FlxG.sound.music.length / 1000) - 2;
+            var musicLength:Float = FlxG.sound.music.length;
+            if (FlxG.sound.music.endTime != null) musicLength = (FlxG.sound.music.endTime - FlxG.sound.music.loopTime);
+
+            var fadeStart:Float = (musicLength / 1000) - 2;
 
             previewTimers.push(new FlxTimer().start(fadeStart, function(_) {
               FlxG.sound.music.fadeOut(2, 0);
             }));
 
-            previewTimers.push(new FlxTimer().start(FlxG.sound.music.length / 1000, function(_) {
+            previewTimers.push(new FlxTimer().start(musicLength / 1000, function(_) {
               playCurSongPreview();
             }));
           },
